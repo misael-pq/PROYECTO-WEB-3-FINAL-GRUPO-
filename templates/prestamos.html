@@ -39,8 +39,13 @@
     </div>
 
     <script>
-        const token = localStorage.getItem('token');
+          const token = localStorage.getItem('token');
+if (!token) {
 
+    localStorage.setItem("pagina_anterior",window.location.pathname);
+
+    window.location.href = "/login";
+}
         function cargarTabla(ruta) {
             fetch(ruta, {
                 method: 'GET',
@@ -77,6 +82,14 @@
         cargarTabla('/solicitudes');
 
         function cambiarEstado(id, nuevoEstado) {
+            console.log("Botón presionado", id, nuevoEstado);
+             const token = localStorage.getItem("token");
+
+    if(!token){
+        alert("No hay sesión activa");
+        window.location.href = "/login";
+        return;
+    }
             const confirmar = confirm("¿Está seguro de cambiar el estado a " + nuevoEstado + "?");
             if(!confirmar){
                 return;
@@ -85,19 +98,41 @@
             fetch('/solicitudes/' + id, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
+                     "Content-Type": "application/json",
+                    "Authorization": "Bearer " + localStorage.getItem("token")
                 },
                 body: JSON.stringify({ estado: nuevoEstado })
             })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.mensaje || data.msg);
-                location.reload();
-            })
-            .catch(error => console.error(error));
+            .then(res => {
+        if(res.status === 401){
+
+    localStorage.setItem(
+        "pagina_anterior",
+        "/prestamos_html"
+    );
+
+    alert("Inicie sesión nuevamente y vuelva a presionar Aprobar/Rechazar.");
+    localStorage.removeItem("token");
+    window.location.href = "/login";
+
+    return;
+}
+        return res.json();
+    })
+    .then(data => {
+        alert(data.mensaje || data.msg);
+       cargarTabla('/solicitudes');
+    })
+    .catch(err => console.log(err));
         }
         function eliminarSolicitud(id) {
+            const token = localStorage.getItem("token");
+
+    if(!token){
+        alert("No hay sesión activa");
+        window.location.href = "/login";
+        return;
+    }
             const confirmar = confirm("¿Está seguro de eliminar la solicitud?");
             if(!confirmar){
                 return;
@@ -107,13 +142,39 @@
                 method: 'DELETE',
                 headers: {'Authorization': 'Bearer ' + token}
             })
-            .then(res => res.json())
-            .then(data => {
-                alert(data.mensaje || data.msg);
-                location.reload();
-            })
-            .catch(error => console.error(error));
+            .then(res => {
+    if(res.status === 401){
+        localStorage.setItem(
+            "pagina_anterior",
+            "/prestamos_html"
+        );
+        alert("Inicie sesión nuevamente y vuelva a presionar Eliminar.");
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+        return;
+    }
+    return res.json();
+})
+.then(data => {
+        if(!data) return;
+
+    alert(data.mensaje || data.msg);
+
+    cargarTabla('/solicitudes');
+    })
+    .catch(err => console.log(err));
         }
+
+    function verificarLogin(){
+    const token = localStorage.getItem("token");
+
+    if(!token){
+        window.location.href = "/login";
+        return false;
+    }
+
+    return true;
+}
     </script>
 </body>
 </html>

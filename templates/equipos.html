@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Control - Equipos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+        <a href="/" class="btn btn-secondary">
+            Volver al Inicio
+        </a>
+        <button class="btn btn-primary" onclick="irARegistrar()">
+            Registrar Equipo
+        </button>
+        
+    </div>
+
+    <h1 class="text-center mb-4"> Gestion de Equipos</h1>
+
+    <div class="card shadow p-4">
+
+        <table class="table table-bordered table-hover">
+
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>Estado</th>
+                    <th>Descripcion</th>
+                    <th>ID Categoría</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody id="tabla-equipos">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<script>
+const token = localStorage.getItem("token");
+if (!token) {
+
+    localStorage.setItem("pagina_anterior",window.location.pathname);
+
+    window.location.href = "/login";
+}
+
+window.onload = function(){
+        if(!localStorage.getItem("token")){
+            document.getElementById("btnRegitrar").disabled = true;
+        }
+    }
+cargarEquipos();
+
+function cargarEquipos() {
+
+    fetch('/equipos')
+    .then(response => response.json())
+    .then(data => {
+
+        const tabla = document.getElementById('tabla-equipos');
+
+        tabla.innerHTML = '';
+
+        data.forEach(e => {
+
+            tabla.innerHTML += `
+                <tr>
+                    <td>${e.id_equipo}</td>
+                    <td>${e.nombre}</td>
+                    <td>${e.marca}</td>
+                    <td>${e.modelo}</td>
+                    <td>${e.estado}</td>
+                    <td>${e.descripcion}</td>
+                    <td>${e.id_categoria}</td>
+                    <td>
+            
+                ${
+                    e.estado === 'Prestado'
+                    ? `<button
+                            class="btn btn-info btn-sm"
+                            onclick="devolverEquipo(${e.id_equipo})">
+                            Devolver
+                    </button>`
+                    : `<button
+                            class="btn btn-success btn-sm"
+                            onclick="prestarEquipo(${e.id_equipo})">
+                            Prestar
+                    </button>`
+                }
+                        <button
+                            class="btn btn-danger btn-sm"
+                            onclick="eliminarEquipo(${e.id_equipo})">
+                            Eliminar
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+    });
+}
+cargarEquipos();
+
+function devolverEquipo(id){
+
+    fetch('/equipos/' + id + '/devolver', {
+        method: 'PATCH'
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        alert(data.mensaje);
+
+        cargarEquipos();
+
+    });
+}
+
+function eliminarEquipo(id){
+    const token = localStorage.getItem("token");
+
+    if(!token){
+        alert("No hay sesión activa");
+        window.location.href = "/login";
+        return;
+    }
+
+    if(!confirm("¿Desea eliminar este equipo?")){
+        return;
+    }
+
+    fetch('/equipos/' + id, {
+        method: 'DELETE', 
+
+        headers: {
+        "Authorization": "Bearer " + localStorage.getItem("token")
+    }
+})
+    .then(res => {
+        if(res.status === 401){
+
+    localStorage.setItem(
+        "pagina_anterior",
+        "/equipos_html"
+    );
+
+   alert("Inicie sesión nuevamente y vuelva a presionar Eliminar.");
+
+    localStorage.removeItem("token");
+
+    window.location.href = "/login";
+
+    return;
+}
+        return res.json();
+    })
+    .then(data => {
+        alert(data.mensaje || data.msg);
+       window.location.href = "/equipos_html";
+    })
+    .catch(err => console.log(err));
+}
+
+function prestarEquipo(id){
+
+    if(!confirm("¿Desea prestar este equipo?")){
+        return;
+    }
+
+    fetch('/equipos/' + id + '/prestar', {
+        method: 'PUT'
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log(data);
+        alert(data.mensaje);
+
+        cargarEquipos();
+
+    })
+    .catch(error => console.error(error));
+}
+
+function verificarLogin(){
+    const token = localStorage.getItem("token");
+
+    if(!token){
+        window.location.href = "/login";
+        return false;
+    }
+
+    return true;
+}
+
+function irARegistrar(){
+
+    const token = localStorage.getItem("token");
+
+    if(!token){
+        alert("Debe iniciar sesión.");
+
+        localStorage.setItem(
+            "pagina_anterior",
+            "/equipos_html"
+        );
+
+        window.location.href = "/login";
+        return;
+    }
+
+    fetch('/verificar_token', {
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    })
+    .then(res => {
+
+        if(res.status === 401){
+
+            alert("La sesión ha expirado. Inicie sesión nuevamente.");
+
+            localStorage.setItem(
+                "pagina_anterior",
+                "/equipos_html"
+            );
+
+            localStorage.removeItem("token");
+
+            window.location.href = "/login";
+
+            return;
+        }
+
+        window.location.href = "/registrar_equipo";
+    });
+}
+
+</script>
+</body>
+</html>
